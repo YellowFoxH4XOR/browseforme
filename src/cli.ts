@@ -152,7 +152,7 @@ async function connect(agent: string | undefined): Promise<void> {
       console.log("Start a new omp session to load it.");
       break;
   }
-  console.log(`Daemon: http://127.0.0.1:${handle.port}/ (no UI; agents use the browser_* MCP tools)`);
+  console.log(`BrowseForMe daemon is on port ${handle.port}. Talk to it through your coding agent; there is no web page.`);
 }
 
 const [command, ...rest] = process.argv.slice(2);
