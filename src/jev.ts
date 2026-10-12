@@ -2,10 +2,15 @@ import * as z from "zod/v4";
 import { describe, type ElementRecord } from "./browser/snapshot";
 import { loadConfig, log } from "./state";
 
-/** Thresholds from TypeSafe's line-search cookbook: present answers read >= 0.9, absent <= 0.05. */
+/**
+ * Element-choice thresholds. Measured on a live page: non-matching requests score `exists` <= 0.07,
+ * correct paraphrases 0.43–0.96 (Jev reads literally), so a unanimous strong pick may act in the
+ * 0.35–0.7 band while anything below EXISTS_ABSENT is "not found".
+ */
 export const EXISTS_MIN = 0.7;
 export const EXISTS_ABSENT = 0.35;
 export const PICK_MIN = 0.6;
+export const STRONG_PICK = 0.9;
 const FLAG_MIN = 0.7;
 
 const ENDPOINT = "https://api.typesafe.ai/v1/systemone";
@@ -159,10 +164,10 @@ export async function pickElement(input: PickInput): Promise<PickOutcome> {
   };
   const exists: JevQuestion = {
     type: "noul",
-    instructions: "Does any element in `elements` match the user's `request`?",
+    instructions: "Would clicking or using one of the elements in `elements` do what the user's `request` asks for?",
     criteria: {
-      true: "At least one listed element is clearly what the request refers to",
-      false: "None of the listed elements is what the request refers to",
+      true: "At least one listed element does what the request asks for, even when its label uses different words than the request (for example a 'Compose' button for 'write a new post')",
+      false: "No listed element does what the request asks for; an element that merely shares words with the request does not count (for example a 'Search' box for 'open my profile')",
     },
   };
   const questions: Record<string, JevQuestion> =
@@ -185,7 +190,8 @@ export async function pickElement(input: PickInput): Promise<PickOutcome> {
     .map((ref) => ({ ref, p: ((forward.probabilities[ref] ?? 0) + (reverse.probabilities[ref] ?? 0)) / 2 }))
     .sort((a, b) => b.p - a.p);
   const top = ranked[0];
-  if (existsP >= EXISTS_MIN && forward.choice === reverse.choice && top.ref === forward.choice && top.p >= PICK_MIN) {
+  const agreed = forward.choice === reverse.choice && top.ref === forward.choice && top.p >= PICK_MIN;
+  if (agreed && (existsP >= EXISTS_MIN || top.p >= STRONG_PICK)) {
     return { kind: "pick", ref: top.ref, p: top.p, ms: result.ms };
   }
   return { kind: "ambiguous", ranked: ranked.slice(0, 3), ms: result.ms };
