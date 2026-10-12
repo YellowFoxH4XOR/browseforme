@@ -82,15 +82,10 @@ const KEYS: Record<string, KeySpec> = {
 };
 
 let transport: Transport | null = null;
-let broadcast: (message: Record<string, unknown>) => void = () => {};
-let handoff: { reason: string; resume: () => void } | null = null;
-let latestFrame: Buffer<ArrayBuffer> | null = null;
-let frameInFlight = false;
 
-/** Daemon wiring: the transport chosen at boot and the /ws broadcaster. */
-export function configureActions(next: Transport, publish: (message: Record<string, unknown>) => void): void {
+/** Daemon wiring: the transport chosen at boot. */
+export function configureActions(next: Transport): void {
   transport = next;
-  broadcast = publish;
 }
 
 // ---------------------------------------------------------------------------- mutex
@@ -137,9 +132,7 @@ export async function runAction(raw: unknown): Promise<ActionResult> {
     const request = parsed.data;
     name = request.action;
     try {
-      if (handoff) outcome = { ok: false, error: `Handoff pending: ${handoff.reason}` };
-      else if (request.action === "handoff") outcome = await doHandoff(request.reason);
-      else outcome = await withLock(() => dispatch(request));
+      outcome = request.action === "handoff" ? handoff(request.reason) : await withLock(() => dispatch(request));
     } catch (err) {
       outcome = {
         ok: false,
@@ -307,7 +300,6 @@ async function navigate(url: string): Promise<Outcome> {
   await settle(target, 150, 2000);
   const scan = await scanCompact(target);
   const flags = await flagsAfter(target, scan);
-  broadcast({ type: "nav", url: scan.url });
   return { ok: true, text: [flags, render(scan)].filter(Boolean).join("\n") };
 }
 
@@ -329,7 +321,6 @@ async function click(request: { ref?: string; target?: string }): Promise<Outcom
   const scan = await scanCompact(target);
   const urlChanged = pageState(target).urlChanges > mark.urlChanges || scan.url !== located.url;
   const flags = urlChanged ? await flagsAfter(target, scan) : null;
-  if (urlChanged) broadcast({ type: "nav", url: scan.url });
   const rebound = located.rebound ?? undefined;
   const head = `clicked: @${located.ref} ${located.role} "${located.name}"${rebound ? ` (rebound to @${rebound})` : ""}`;
   return { ok: true, text: [flags, head, render(scan)].filter(Boolean).join("\n"), resolved: { ...resolved, rebound } };
@@ -429,22 +420,15 @@ async function scroll(direction: "up" | "down", amount: number): Promise<Outcome
   return { ok: true, text: `scrolled: ${direction} ${amount}\n${render(await scanCompact(target))}` };
 }
 
-async function capture(target: Target): Promise<string> {
-  try {
-    const { data } = await target.send<{ data: string }>("Page.captureScreenshot", { format: "jpeg", quality: 60 }, 5000);
-    latestFrame = Buffer.from(data, "base64");
-    return data;
-  } catch (err) {
-    if (err instanceof Error && err.message.startsWith("CDP timeout")) {
-      throw new ActionError("Screenshot timed out; the tab may be in the background.");
-    }
-    throw err;
-  }
-}
-
 async function screenshot(): Promise<Outcome> {
   const target = requireTarget();
-  const data = await capture(target);
+  let data: string;
+  try {
+    ({ data } = await target.send<{ data: string }>("Page.captureScreenshot", { format: "jpeg", quality: 60 }, 5000));
+  } catch (err) {
+    if (err instanceof Error && err.message.startsWith("CDP timeout")) throw new ActionError("Screenshot timed out; the tab may be in the background.");
+    throw err;
+  }
   return { ok: true, text: `url: ${String(await evalIn(target, "location.href"))}`, imageBase64: data };
 }
 
@@ -478,50 +462,18 @@ async function waitFor(ms: number | undefined, text: string | undefined): Promis
   return { ok: true, text: render(await scanCompact(target)) };
 }
 
-async function doHandoff(reason: string): Promise<Outcome> {
-  const { promise, resolve } = Promise.withResolvers<boolean>();
-  handoff = { reason, resume: () => resolve(true) };
-  broadcast({ type: "handoff", pending: true, reason });
-  const timer = setTimeout(() => resolve(false), 10 * 60_000);
-  const resumed = await promise;
-  clearTimeout(timer);
-  handoff = null;
-  broadcast({ type: "handoff", pending: false });
-  if (!resumed) return { ok: false, error: "Handoff timed out after 10 minutes." };
-  const page = await withLock(async () => render(await scanCompact(requireTarget()))).catch(() => "");
-  return { ok: true, text: ["Handoff resumed.", page].filter(Boolean).join("\n") };
+/**
+ * Hands control to the user (login, 2FA, captcha). Returns at once: MCP clients cap tool calls
+ * (Codex at 60 s), and the agent's own conversation is where the user says they are done.
+ */
+function handoff(reason: string): Outcome {
+  return {
+    ok: true,
+    text: `Paused for the user: ${reason}\nAsk the user to do this in the allowed Chrome tab and to tell you when it is done. Do not use browser tools until they confirm; then call browser_snapshot.`,
+  };
 }
 
 // ---------------------------------------------------------------------------- daemon helpers
-
-export function resumeHandoff(): boolean {
-  if (!handoff) return false;
-  handoff.resume();
-  return true;
-}
-
-export function handoffState(): { pending: boolean; reason: string } | null {
-  return handoff ? { pending: true, reason: handoff.reason } : null;
-}
-
-export function latestFrameBytes(): Buffer<ArrayBuffer> | null {
-  return latestFrame;
-}
-
-/** Captures a fresh frame for the UI; never takes the action mutex and skips when a capture is in flight. */
-export async function refreshFrame(): Promise<void> {
-  if (frameInFlight || !transport) return;
-  const target = transport.current();
-  if (typeof target === "string") return;
-  frameInFlight = true;
-  try {
-    await capture(target);
-  } catch {
-    // keep the previous frame
-  } finally {
-    frameInFlight = false;
-  }
-}
 
 /** Logs `engine <userAgent> | webdriver=<bool>` once a target is available. */
 export async function engineCheck(): Promise<boolean> {

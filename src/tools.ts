@@ -15,7 +15,7 @@ function defineTool<S extends z.ZodObject>(name: string, description: string, sc
   return { name, description, schema, build: (args) => map(schema.parse(args ?? {})) };
 }
 
-export const TOOLS: ToolDef[] = [
+const TOOLS: ToolDef[] = [
   defineTool(
     "browser_navigate",
     "Open url in the current tab. Returns compact @e refs and page flags.",
@@ -79,28 +79,20 @@ export const TOOLS: ToolDef[] = [
   ),
   defineTool(
     "browser_handoff",
-    "Pause until the user finishes login, 2FA, or a captcha in Chrome and clicks Resume.",
+    "Hand the page to the user for a login, 2FA, or a captcha. Returns immediately: ask the user to finish it in Chrome and tell you when it is done, then continue with browser_snapshot.",
     z.object({ reason: z.string() }),
     ({ reason }) => ({ action: "handoff", reason }),
   ),
 ];
 
-export const TOOL_BY_NAME: Record<string, ToolDef> = Object.fromEntries(TOOLS.map((tool) => [tool.name, tool]));
-
-/** The text an MCP client or LLM sees for a tool result. */
-export function toolText(name: string, result: ActionResult): string {
+/** The text an MCP client sees for a tool result. */
+function toolText(name: string, result: ActionResult): string {
   if (!result.ok) return result.error ?? "Action failed.";
   const text = result.text ?? "";
   const resolved = result.resolved;
   if (!resolved || resolved.by === "ref" || name === "browser_find") return text;
   const how = resolved.by === "jev" ? `jev p=${(resolved.p ?? 0).toFixed(2)}` : resolved.by;
   return `resolved: @${resolved.ref} (${how})\n${text}`;
-}
-
-/** JSON Schema for LLM tool APIs (Anthropic input_schema / OpenAI function.parameters). */
-export function jsonSchema(tool: ToolDef): Record<string, unknown> {
-  const { $schema: _ignored, ...schema } = z.toJSONSchema(tool.schema);
-  return schema;
 }
 
 type CallAction = (request: ActionRequest) => Promise<ActionResult>;
@@ -131,9 +123,17 @@ async function callTool(tool: ToolDef, args: unknown, call: CallAction): Promise
   return { content: [{ type: "text", text: toolText(tool.name, result) }] };
 }
 
-/** An MCP server exposing all browser tools; `call` runs the action (in-process or over HTTP). */
+/** Usage guidance every MCP client receives at initialize (clients add it to the agent's context). */
+const INSTRUCTIONS = `BrowseForMe drives the user's real Chrome: only tabs the user allowed with the BrowseForMe extension (or the app's own Chrome profile in owned mode).
+- Prefer target words over refs: browser_click and browser_type accept \`target\`, e.g. "Post button" or "Post text box". Use @e refs only when a target is reported ambiguous, and only refs from the latest result; refs die after navigation.
+- If a result has a \`flags:\` line naming login_wall, captcha, or two_factor, call browser_handoff, ask the user to finish it in Chrome, and wait for them to say it is done.
+- To post on X: browser_navigate to https://x.com/compose/post, browser_type the user's exact text into target "Post text box", browser_click target "Post button", then browser_check "Was the post published?". Never post or send text the user did not give you.
+- If an action fails, call browser_snapshot once and retry with a ref.
+- If a tool reports that no tab is allowed, ask the user to click the BrowseForMe extension on the tab they want you to use.`;
+
+/** An MCP server exposing all browser tools; `call` forwards each action to the daemon. */
 export function buildMcpServer(call: CallAction): McpServer {
-  const server = new McpServer({ name: "browseforme", version: "0.1.0" });
+  const server = new McpServer({ name: "browseforme", version: "0.1.0" }, { instructions: INSTRUCTIONS });
   for (const tool of TOOLS) {
     if (Object.keys(tool.schema.shape).length === 0) {
       server.registerTool(tool.name, { description: tool.description }, () => callTool(tool, {}, call));
