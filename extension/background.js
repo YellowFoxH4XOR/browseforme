@@ -78,11 +78,16 @@ function toggleTab(tabId) {
   });
 }
 
-// Callers hold the queue (serialize).
+// Callers hold the queue (serialize). One tab at a time: granting a tab revokes every
+// other grant first (debugger detached, badge cleared, daemon told the session ended).
 async function grantLocked(tabId) {
   await chrome.tabs.get(tabId); // throws if the tab does not exist
-  const allowed = await getAllowed();
-  if (!allowed.includes(tabId)) await setAllowed([...allowed, tabId]);
+  for (const other of await getAllowed()) {
+    if (other === tabId) continue;
+    await releaseTab(other, "replaced");
+    await setBadge(other, false);
+  }
+  await setAllowed([tabId]);
   await setBadge(tabId, true);
   await pushLocked();
 }

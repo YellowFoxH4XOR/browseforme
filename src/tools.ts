@@ -67,7 +67,7 @@ const TOOLS: ToolDef[] = [
   defineTool("browser_screenshot", "JPEG of the current viewport.", z.object({}), () => ({ action: "screenshot" })),
   defineTool(
     "browser_tabs",
-    "List allowed tabs, or open/select/close them. New tabs start unallowed; ask the user to toggle them.",
+    "List the allowed tab, or open/select/close tabs. The user allows one tab at a time; a new tab starts unallowed, so ask the user to switch the extension to it.",
     z.object({ action: z.enum(["list", "new", "select", "close"]), index: z.number().int().optional(), url: z.string().optional() }),
     ({ action, index, url }) => ({ action: "tabs", tab: action, index, url }),
   ),
@@ -124,7 +124,7 @@ async function callTool(tool: ToolDef, args: unknown, call: CallAction): Promise
 }
 
 /** Usage guidance every MCP client receives at initialize (clients add it to the agent's context). */
-const INSTRUCTIONS = `BrowseForMe drives the user's real Chrome: only tabs the user allowed with the BrowseForMe extension (or the app's own Chrome profile in owned mode).
+const INSTRUCTIONS = `BrowseForMe drives the user's real Chrome, but only the one tab the user allowed with the BrowseForMe extension (or the app's own Chrome profile in owned mode). Allowing another tab switches BrowseForMe to it.
 - Prefer target words over refs: browser_click and browser_type accept \`target\`, e.g. "Post button" or "Post text box". Use @e refs only when a target is reported ambiguous, and only refs from the latest result; refs die after navigation.
 - If a result has a \`flags:\` line naming login_wall, captcha, or two_factor, call browser_handoff, ask the user to finish it in Chrome, and wait for them to say it is done.
 - To post on X: browser_navigate to https://x.com/compose/post, browser_type the user's exact text into target "Post text box", browser_click target "Post button", then browser_check "Was the post published?". Never post or send text the user did not give you.

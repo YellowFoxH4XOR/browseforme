@@ -47,7 +47,9 @@ function renderCurrent(allowed) {
   currentEl.textContent = currentTab.title || currentTab.url || "(untitled tab)";
   toggleBtn.disabled = false;
   toggleBtn.dataset.state = on ? "on" : "off";
-  toggleBtn.textContent = on ? "ON: click to turn off" : "OFF: click to turn on";
+  // Only one tab is allowed at a time: turning this one on switches BrowseForMe away from the other.
+  if (on) toggleBtn.textContent = "ON: click to turn off";
+  else toggleBtn.textContent = allowed.length > 0 ? "OFF: click to switch BrowseForMe to this tab" : "OFF: click to turn on";
 }
 
 function renderGrants(allowed, infos) {
