@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>BrowseForMe Bridge</title>
+    <style>
+      body {
+        width: 300px;
+        margin: 0;
+        padding: 12px;
+        font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        color: #111;
+      }
+      [hidden] { display: none !important; }
+      #status { margin-bottom: 8px; font-size: 12px; color: #6b7280; }
+      #status[data-state="connected"] { color: #15803d; }
+      #status[data-state="down"] { color: #b45309; }
+      #current { margin-bottom: 8px; font-weight: 600; overflow-wrap: anywhere; }
+      #toggle {
+        width: 100%;
+        padding: 8px;
+        border: 0;
+        border-radius: 6px;
+        font: inherit;
+        color: #fff;
+        background: #6b7280;
+        cursor: pointer;
+      }
+      #toggle[data-state="on"] { background: #16a34a; }
+      #toggle:disabled { opacity: 0.5; cursor: default; }
+      #error { margin-top: 8px; color: #b91c1c; overflow-wrap: anywhere; }
+      h2 {
+        margin: 14px 0 6px;
+        font-size: 11px;
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        color: #6b7280;
+      }
+      ul { margin: 0; padding: 0; list-style: none; }
+      li { display: flex; align-items: center; gap: 8px; padding: 4px 0; }
+      .title {
+        flex: 1;
+        min-width: 0;
+        overflow: hidden;
+        white-space: nowrap;
+        text-overflow: ellipsis;
+      }
+      li button {
+        padding: 2px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 4px;
+        background: #fff;
+        font: inherit;
+        cursor: pointer;
+      }
+      .empty { margin: 0; color: #6b7280; }
+    </style>
+  </head>
+  <body>
+    <div id="status" data-state="down">Daemon: checking...</div>
+    <div id="current"></div>
+    <button id="toggle" type="button" data-state="off" disabled>Toggle</button>
+    <div id="error" hidden></div>
+    <h2>Allowed tabs</h2>
+    <ul id="allowed"></ul>
+    <p id="empty" class="empty" hidden>No tabs granted yet. Toggle ON on the tab you want BrowseForMe to use.</p>
+    <script src="popup.js"></script>
+  </body>
+</html>

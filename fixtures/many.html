@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <title>Many buttons</title>
+  <style>
+    body { font-family: system-ui, sans-serif; margin: 0; padding: 16px; }
+    #list { display: flex; flex-direction: column; gap: 4px; width: 200px; }
+  </style>
+</head>
+<body>
+  <div id="list"></div>
+  <script>
+    const list = document.getElementById("list");
+    for (let i = 1; i <= 2000; i++) {
+      const button = document.createElement("button");
+      button.textContent = "Item " + i;
+      button.addEventListener("click", () => {
+        document.title = "clicked " + i;
+      });
+      list.append(button);
+    }
+  </script>
+</body>
+</html>

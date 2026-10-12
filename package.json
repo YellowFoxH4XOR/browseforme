@@ -1,0 +1,17 @@
+{
+  "name": "browseforme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "bfm": "src/cli.ts"
+  },
+  "scripts": {
+    "start": "bun src/daemon.ts",
+    "bfm": "bun src/cli.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.3.1",
+    "zod": "^4.6.6"
+  }
+}

@@ -1,0 +1,1011 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<meta name="bfm-token" content="<!--TOKEN-->">
+<link rel="icon" href="data:,">
+<title>BrowseForMe</title>
+<style>
+:root {
+  color-scheme: dark;
+  --bg: #0e1015;
+  --panel: #161922;
+  --panel-2: #1d2130;
+  --field: #0f1218;
+  --line: #2a3042;
+  --text: #e7e9ef;
+  --muted: #8a92a6;
+  --accent: #5b8cff;
+  --ok: #35c281;
+  --warn: #e6a93a;
+  --bad: #e5534b;
+  --radius: 10px;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: 100%; margin: 0; }
+body {
+  display: flex;
+  flex-direction: column;
+  background: var(--bg);
+  color: var(--text);
+  font: 14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button {
+  padding: 7px 12px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--panel-2);
+  cursor: pointer;
+}
+button:hover:not(:disabled) { border-color: #3d4766; }
+button:disabled { opacity: 0.5; cursor: default; }
+button.primary { background: var(--accent); border-color: transparent; color: #fff; }
+button.ghost { background: transparent; }
+input[type="text"], input[type="password"], select, textarea {
+  width: 100%;
+  padding: 7px 9px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+.topbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 14px;
+  padding: 10px 16px;
+  border-bottom: 1px solid var(--line);
+  background: var(--panel);
+}
+.brand { font-weight: 700; letter-spacing: 0.02em; }
+.url {
+  flex: 1 1 200px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 13px;
+}
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip {
+  padding: 3px 10px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-size: 12px;
+  white-space: nowrap;
+}
+.chip.ok { color: var(--ok); border-color: rgba(53, 194, 129, 0.45); }
+.chip.warn { color: var(--warn); border-color: rgba(230, 169, 58, 0.5); }
+.chip.bad { color: var(--bad); border-color: rgba(229, 83, 75, 0.5); }
+.handoff {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 4px 4px 10px;
+  border: 1px solid rgba(230, 169, 58, 0.5);
+  border-radius: 8px;
+  background: rgba(230, 169, 58, 0.12);
+  color: var(--warn);
+  font-size: 13px;
+}
+.handoff button {
+  padding: 4px 10px;
+  border-color: rgba(230, 169, 58, 0.6);
+  background: transparent;
+  color: var(--warn);
+}
+
+.layout {
+  flex: 1;
+  min-height: 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1.25fr);
+  grid-template-rows: minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+}
+.pane {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  min-height: 0;
+  overflow: hidden;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+}
+.pane-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--line);
+}
+.pane-head h2 { margin: 0; font-size: 14px; font-weight: 600; }
+.transcript {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  overflow-y: auto;
+  padding: 12px;
+}
+.msg {
+  max-width: 88%;
+  padding: 9px 12px;
+  border-radius: 12px;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.msg.user { align-self: flex-end; background: #2b3b6b; }
+.msg.assistant { align-self: flex-start; background: var(--panel-2); border: 1px solid var(--line); }
+.msg.assistant.pending::after { content: "Thinking…"; color: var(--muted); font-style: italic; }
+.note { align-self: center; max-width: 90%; color: var(--muted); font-size: 12px; text-align: center; }
+.pill {
+  display: inline-block;
+  margin: 2px 6px 2px 0;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  color: var(--muted);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 12px;
+}
+.pill.ok { color: var(--ok); border-color: rgba(53, 194, 129, 0.45); }
+.pill.bad { color: var(--bad); border-color: rgba(229, 83, 75, 0.5); }
+.err { margin-top: 4px; color: #ff9b94; }
+.composer {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+  padding: 10px;
+  border-top: 1px solid var(--line);
+}
+.composer textarea {
+  flex: 1;
+  min-height: 44px;
+  max-height: 200px;
+  padding: 9px 10px;
+  resize: none;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--field);
+}
+.frame-box {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  margin: 12px;
+  overflow: hidden;
+  border-radius: 8px;
+  background: #07080b;
+}
+.frame-box img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+.frame-msg {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-content: center;
+  padding: 24px;
+  color: var(--muted);
+  text-align: center;
+}
+.frame-msg p { margin: 4px 0; }
+
+dialog {
+  width: min(560px, calc(100vw - 32px));
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--text);
+}
+dialog::backdrop { background: rgba(0, 0, 0, 0.6); }
+.settings { display: grid; gap: 12px; padding: 18px; }
+.settings h2 { margin: 0; font-size: 16px; }
+.settings label { display: grid; gap: 4px; color: var(--muted); font-size: 13px; }
+.settings .check { display: flex; align-items: center; gap: 8px; color: var(--text); }
+.settings fieldset {
+  display: grid;
+  gap: 10px;
+  margin: 0;
+  padding: 10px 12px 12px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+.settings legend { padding: 0 6px; color: var(--muted); font-size: 13px; }
+.key-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: end; gap: 8px; }
+.form-msg { min-height: 1.4em; margin: 0; font-size: 13px; color: var(--muted); }
+.form-msg.err { color: #ff9b94; }
+.dialog-actions { display: flex; justify-content: flex-end; gap: 8px; }
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 20px;
+  transform: translateX(-50%);
+  max-width: min(560px, calc(100vw - 32px));
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: #242a3a;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.4);
+}
+
+@media (max-width: 860px) {
+  body { height: auto; min-height: 100%; }
+  .layout { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto; }
+  .pane.chat { height: 70vh; }
+  .pane.frame-col { height: 60vh; }
+}
+</style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">BrowseForMe</div>
+  <div class="url" id="url" title="No allowed tab yet.">—</div>
+  <div class="chips">
+    <span class="chip" id="chipConn">Daemon: connecting…</span>
+    <span class="chip" id="chipJev">Jev: —</span>
+  </div>
+  <div class="handoff" id="handoff" role="status" hidden>
+    <span id="handoffReason"></span>
+    <button type="button" id="resumeBtn">Resume</button>
+  </div>
+  <button type="button" id="settingsBtn">Settings</button>
+</header>
+
+<main class="layout">
+  <section class="pane chat" aria-label="Chat">
+    <div class="pane-head">
+      <h2>Chat</h2>
+      <button type="button" class="ghost" id="newChatBtn">New chat</button>
+    </div>
+    <div class="transcript" id="transcript" role="log"></div>
+    <form class="composer" id="composer">
+      <textarea id="input" rows="2" aria-label="Message" placeholder="Tell the agent what to do in your granted tab. Enter sends, Shift+Enter adds a line."></textarea>
+      <button type="submit" class="primary" id="sendBtn">Send</button>
+    </form>
+  </section>
+
+  <section class="pane frame-col" aria-label="Browser view">
+    <div class="pane-head"><h2>Browser view</h2></div>
+    <div class="frame-box">
+      <img id="frame" alt="Latest frame from the granted tab" hidden>
+      <div class="frame-msg" id="frameMsg">
+        <p id="frameMsgText"></p>
+        <p id="frameMsgDetail"></p>
+      </div>
+    </div>
+  </section>
+</main>
+
+<div class="toast" id="toast" role="status" hidden></div>
+
+<dialog id="settingsDialog" aria-labelledby="settingsTitle">
+  <form class="settings" id="settingsForm">
+    <h2 id="settingsTitle">Settings</h2>
+    <label>Provider
+      <select id="cfgProvider">
+        <option value="auto">auto</option>
+        <option value="claude-cli">claude-cli</option>
+        <option value="anthropic">anthropic</option>
+        <option value="openai">openai</option>
+      </select>
+    </label>
+    <label>Anthropic model
+      <input type="text" id="cfgAnthropicModel" placeholder="claude-sonnet-4-5" autocomplete="off" spellcheck="false">
+    </label>
+    <label>OpenAI model
+      <input type="text" id="cfgOpenaiModel" placeholder="gpt-4.1" autocomplete="off" spellcheck="false">
+    </label>
+    <label>OpenAI base URL
+      <input type="text" id="cfgOpenaiBaseUrl" placeholder="https://api.openai.com/v1" autocomplete="off" spellcheck="false">
+    </label>
+    <div class="key-row">
+      <label>Anthropic API key
+        <input type="password" id="cfgAnthropicKey" placeholder="not set" autocomplete="off">
+      </label>
+      <button type="button" class="ghost" id="clearAnthropicKey" hidden>Clear</button>
+    </div>
+    <div class="key-row">
+      <label>OpenAI API key
+        <input type="password" id="cfgOpenaiKey" placeholder="not set" autocomplete="off">
+      </label>
+      <button type="button" class="ghost" id="clearOpenaiKey" hidden>Clear</button>
+    </div>
+    <fieldset>
+      <legend>TypeSafe (Jev)</legend>
+      <div class="key-row">
+        <label>TypeSafe (Jev) API key
+          <input type="password" id="cfgTypesafeKey" placeholder="not set" autocomplete="off">
+        </label>
+        <button type="button" class="ghost" id="clearTypesafeKey" hidden>Clear</button>
+      </div>
+      <label class="check"><input type="checkbox" id="cfgJevEnabled"> Use Jev for decisions</label>
+      <label>Jev model
+        <input type="text" id="cfgJevModel" placeholder="jev-latest" autocomplete="off" spellcheck="false">
+      </label>
+    </fieldset>
+    <p class="form-msg" id="settingsMsg" role="status"></p>
+    <div class="dialog-actions">
+      <button type="button" class="ghost" id="settingsCancel">Cancel</button>
+      <button type="submit" class="primary" id="settingsSave" disabled>Save</button>
+    </div>
+  </form>
+</dialog>
+
+<script>
+(() => {
+  "use strict";
+
+  const THREAD_KEY = "bfm-thread";
+  const DEFAULTS = {
+    anthropicModel: "claude-sonnet-4-5",
+    openaiModel: "gpt-4.1",
+    openaiBaseUrl: "https://api.openai.com/v1",
+    jevModel: "jev-latest",
+  };
+  const TOKEN = document.querySelector('meta[name="bfm-token"]')?.getAttribute("content") ?? "";
+
+  const $ = (id) => document.getElementById(id);
+  const el = {
+    url: $("url"),
+    chipConn: $("chipConn"),
+    chipJev: $("chipJev"),
+    handoff: $("handoff"),
+    handoffReason: $("handoffReason"),
+    resumeBtn: $("resumeBtn"),
+    settingsBtn: $("settingsBtn"),
+    newChatBtn: $("newChatBtn"),
+    transcript: $("transcript"),
+    composer: $("composer"),
+    input: $("input"),
+    sendBtn: $("sendBtn"),
+    frame: $("frame"),
+    frameMsg: $("frameMsg"),
+    frameMsgText: $("frameMsgText"),
+    frameMsgDetail: $("frameMsgDetail"),
+    toast: $("toast"),
+    dialog: $("settingsDialog"),
+    settingsForm: $("settingsForm"),
+    settingsMsg: $("settingsMsg"),
+    cfgProvider: $("cfgProvider"),
+    cfgAnthropicModel: $("cfgAnthropicModel"),
+    cfgOpenaiModel: $("cfgOpenaiModel"),
+    cfgOpenaiBaseUrl: $("cfgOpenaiBaseUrl"),
+    cfgAnthropicKey: $("cfgAnthropicKey"),
+    clearAnthropicKey: $("clearAnthropicKey"),
+    cfgOpenaiKey: $("cfgOpenaiKey"),
+    clearOpenaiKey: $("clearOpenaiKey"),
+    cfgTypesafeKey: $("cfgTypesafeKey"),
+    clearTypesafeKey: $("clearTypesafeKey"),
+    cfgJevEnabled: $("cfgJevEnabled"),
+    cfgJevModel: $("cfgJevModel"),
+    settingsCancel: $("settingsCancel"),
+    settingsSave: $("settingsSave"),
+  };
+
+  let health = null; // last /api/health body; null while the daemon is unreachable
+  let polledOnce = false;
+  let pollBusy = false;
+  let frameUrl = null; // object URL of the latest JPEG
+  let frameBusy = false;
+  let threadId = loadThreadId();
+  let inflight = null; // AbortController for the running chat turn
+  let configLoaded = false;
+  let toastTimer = 0;
+
+  // ---- HTTP helpers ------------------------------------------------------
+
+  function api(path, init = {}) {
+    const headers = new Headers(init.headers || {});
+    if (TOKEN) headers.set("Authorization", "Bearer " + TOKEN);
+    return fetch(path, { ...init, headers }).catch((err) => {
+      if (err && err.name === "AbortError") throw err;
+      throw new Error("Could not reach the BrowseForMe daemon.");
+    });
+  }
+
+  // Runs fn with a signal that aborts after ms. The signal covers the whole
+  // call, including reading the response body.
+  async function withDeadline(ms, fn) {
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), ms);
+    try {
+      return await fn(controller.signal);
+    } finally {
+      clearTimeout(timer);
+    }
+  }
+
+  async function getJson(path, signal) {
+    const res = await api(path, { signal });
+    if (!res.ok) throw new Error("HTTP " + res.status);
+    return res.json();
+  }
+
+  async function putConfig(body) {
+    return withDeadline(15000, async (signal) => {
+      const res = await api("/api/config", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(body),
+        signal,
+      });
+      if (!res.ok) throw new Error(await readError(res));
+      return res.json();
+    });
+  }
+
+  async function readError(res) {
+    const text = await res.text().catch(() => "");
+    try {
+      const body = JSON.parse(text);
+      if (body && typeof body.error === "string") return body.error;
+    } catch {
+      // Not JSON: fall through to the raw body.
+    }
+    return text.trim().slice(0, 300) || "HTTP " + res.status;
+  }
+
+  function errorText(err) {
+    if (err && err.name === "AbortError") return "The request timed out.";
+    return err instanceof Error ? err.message : String(err);
+  }
+
+  // ---- Status, gate, and frame ------------------------------------------
+
+  async function pollAll() {
+    if (pollBusy) return;
+    pollBusy = true;
+    try {
+      const [nextHealth, state] = await Promise.all([
+        withDeadline(4000, (signal) => getJson("/api/health", signal)).catch(() => null),
+        withDeadline(4000, (signal) => getJson("/api/state", signal)).catch(() => null),
+      ]);
+      health = nextHealth;
+      if (state) {
+        setUrl(state.url, state.title);
+        setHandoff(state.handoff);
+      }
+    } finally {
+      polledOnce = true;
+      pollBusy = false;
+      renderStatus();
+    }
+  }
+
+  function renderStatus() {
+    renderChips();
+    renderFrameGate();
+  }
+
+  function setChip(node, text, tone, title) {
+    node.textContent = text;
+    node.className = tone ? "chip " + tone : "chip";
+    node.title = title || "";
+  }
+
+  function renderChips() {
+    if (!health) {
+      setChip(
+        el.chipConn,
+        polledOnce ? "Daemon: unreachable" : "Daemon: connecting…",
+        polledOnce ? "bad" : "",
+        "Retrying every 2 seconds.",
+      );
+      setChip(el.chipJev, "Jev: —", "", "");
+      return;
+    }
+    if (health.mode === "extension") {
+      const ext = health.extension || { connected: false, allowedTabs: 0 };
+      if (ext.connected) {
+        const allowed = ext.allowedTabs ?? 0;
+        setChip(el.chipConn, "Extension: connected · " + allowed + " allowed", allowed > 0 ? "ok" : "warn", "");
+      } else {
+        setChip(el.chipConn, "Extension: not connected", "bad", health.error || "");
+      }
+    } else {
+      const browser = health.browser || "down";
+      const tone = browser === "ready" ? "ok" : browser === "starting" ? "warn" : "bad";
+      setChip(el.chipConn, "Chrome: " + browser, tone, health.error || "");
+    }
+    const jev = String(health.jev ?? "");
+    const jevTone = jev === "ready" ? "ok" : jev.startsWith("error") ? "bad" : "";
+    setChip(el.chipJev, "Jev: " + (jev || "unknown"), jevTone, jevHint(jev));
+  }
+
+  function jevHint(status) {
+    if (status === "no-key") return "Add a TypeSafe key in Settings to enable Jev.";
+    if (status === "disabled") return "Jev is turned off in Settings.";
+    return "";
+  }
+
+  function frameGate() {
+    if (!health) {
+      return {
+        open: false,
+        text: polledOnce ? "Daemon unreachable. Retrying…" : "Connecting to the BrowseForMe daemon…",
+        detail: "",
+      };
+    }
+    if (health.mode === "extension") {
+      const ext = health.extension || { connected: false, allowedTabs: 0 };
+      if (!ext.connected) {
+        return { open: false, text: "Extension not connected.", detail: health.error || "" };
+      }
+      if (!ext.allowedTabs) {
+        return { open: false, text: "Toggle the BrowseForMe extension on a tab to grant it.", detail: "" };
+      }
+      return { open: true, text: "", detail: "" };
+    }
+    if (health.browser === "ready") return { open: true, text: "", detail: "" };
+    return {
+      open: false,
+      text: health.browser === "starting" ? "Starting Chrome…" : "Chrome is not running.",
+      detail: health.error || "",
+    };
+  }
+
+  function renderFrameGate() {
+    const gate = frameGate();
+    if (!gate.open) {
+      dropFrame();
+      el.frame.hidden = true;
+      el.frameMsg.hidden = false;
+      el.frameMsgText.textContent = gate.text;
+      el.frameMsgDetail.textContent = gate.detail;
+      el.frameMsgDetail.hidden = !gate.detail;
+      return;
+    }
+    if (frameUrl) {
+      el.frame.hidden = false;
+      el.frameMsg.hidden = true;
+      return;
+    }
+    el.frame.hidden = true;
+    el.frameMsg.hidden = false;
+    el.frameMsgText.textContent = "Waiting for the first frame…";
+    el.frameMsgDetail.textContent = "";
+    el.frameMsgDetail.hidden = true;
+  }
+
+  function dropFrame() {
+    if (frameUrl) URL.revokeObjectURL(frameUrl);
+    frameUrl = null;
+    el.frame.removeAttribute("src");
+  }
+
+  async function captureFrame() {
+    if (frameBusy || document.visibilityState !== "visible" || !frameGate().open) return;
+    frameBusy = true;
+    try {
+      await withDeadline(6000, async (signal) => {
+        const refresh = await api("/api/frame/refresh", { method: "POST", signal });
+        if (!refresh.ok) return;
+        const res = await api("/api/frame?t=" + Date.now(), { cache: "no-store", signal });
+        if (res.status !== 200 || !frameGate().open) return;
+        const blob = await res.blob();
+        if (!frameGate().open) return;
+        const previous = frameUrl;
+        frameUrl = URL.createObjectURL(blob);
+        el.frame.src = frameUrl;
+        if (previous) URL.revokeObjectURL(previous);
+        renderFrameGate();
+      });
+    } catch {
+      // Transient failure; the next tick retries.
+    } finally {
+      frameBusy = false;
+    }
+  }
+
+  function setUrl(url, title) {
+    el.url.textContent = url || "—";
+    el.url.title = url ? (title ? title + "\n" + url : url) : "No allowed tab yet.";
+  }
+
+  function setHandoff(handoff) {
+    const pending = !!(handoff && handoff.pending);
+    el.handoff.hidden = !pending;
+    el.handoffReason.textContent = pending ? (handoff.reason || "Waiting for you in Chrome") : "";
+  }
+
+  function toast(text) {
+    el.toast.textContent = text;
+    el.toast.hidden = false;
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => {
+      el.toast.hidden = true;
+    }, 3500);
+  }
+
+  el.resumeBtn.addEventListener("click", async () => {
+    el.resumeBtn.disabled = true;
+    try {
+      await withDeadline(5000, async (signal) => {
+        const res = await api("/api/handoff/resume", { method: "POST", signal });
+        if (!res.ok) throw new Error(await readError(res));
+      });
+      setHandoff(null);
+    } catch (err) {
+      toast("Resume failed: " + errorText(err));
+    } finally {
+      el.resumeBtn.disabled = false;
+    }
+  });
+
+  function connectSocket() {
+    const scheme = location.protocol === "https:" ? "wss:" : "ws:";
+    const socket = new WebSocket(scheme + "//" + location.host + "/ws?token=" + encodeURIComponent(TOKEN));
+    socket.addEventListener("message", (event) => {
+      let msg = null;
+      try {
+        msg = JSON.parse(String(event.data));
+      } catch {
+        return;
+      }
+      if (!msg || typeof msg !== "object") return;
+      if (msg.type === "handoff") {
+        setHandoff({ pending: msg.pending === true, reason: msg.reason });
+      } else if (msg.type === "nav") {
+        setUrl(typeof msg.url === "string" ? msg.url : null, "");
+      }
+    });
+    socket.addEventListener("close", () => {
+      setTimeout(connectSocket, 2000);
+    });
+  }
+
+  // ---- Chat --------------------------------------------------------------
+
+  function loadThreadId() {
+    try {
+      return localStorage.getItem(THREAD_KEY) || null;
+    } catch {
+      return null;
+    }
+  }
+
+  function storeThreadId(id) {
+    threadId = id || null;
+    try {
+      if (threadId) localStorage.setItem(THREAD_KEY, threadId);
+      else localStorage.removeItem(THREAD_KEY);
+    } catch {
+      // Storage unavailable: the thread still works for this page load.
+    }
+  }
+
+  function scrollTranscript() {
+    el.transcript.scrollTop = el.transcript.scrollHeight;
+  }
+
+  function addMessage(role, text) {
+    const node = document.createElement("div");
+    node.className = "msg " + role;
+    if (text) node.textContent = text;
+    el.transcript.appendChild(node);
+    scrollTranscript();
+    return node;
+  }
+
+  function addNote(text) {
+    const node = document.createElement("div");
+    node.className = "note";
+    node.textContent = text;
+    el.transcript.appendChild(node);
+  }
+
+  function appendText(turn, text) {
+    turn.classList.remove("pending");
+    turn.appendChild(document.createTextNode(text));
+    scrollTranscript();
+  }
+
+  function addPill(turn, name, ok) {
+    turn.classList.remove("pending");
+    const pill = document.createElement("span");
+    pill.className = ok ? "pill ok" : "pill bad";
+    pill.textContent = name + (ok ? " ok" : " failed");
+    turn.appendChild(pill);
+    scrollTranscript();
+  }
+
+  function showTurnError(turn, message) {
+    turn.classList.remove("pending");
+    const line = document.createElement("div");
+    line.className = "err";
+    line.textContent = message;
+    turn.appendChild(line);
+    scrollTranscript();
+  }
+
+  function finishTurn(turn) {
+    turn.classList.remove("pending");
+    if (!turn.textContent.trim()) turn.remove();
+  }
+
+  function parseFrame(raw) {
+    let event = "message";
+    const data = [];
+    for (const line of raw.split("\n")) {
+      if (!line || line.charAt(0) === ":") continue;
+      const colon = line.indexOf(":");
+      const field = colon === -1 ? line : line.slice(0, colon);
+      let value = colon === -1 ? "" : line.slice(colon + 1);
+      if (value.charAt(0) === " ") value = value.slice(1);
+      if (field === "event") event = value;
+      else if (field === "data") data.push(value);
+    }
+    return { event, data: data.join("\n") };
+  }
+
+  // Returns true when the frame ends the turn (done or error).
+  function applyFrame(frame, turn) {
+    let payload = {};
+    try {
+      const value = JSON.parse(frame.data);
+      if (value && typeof value === "object") payload = value;
+    } catch {
+      // A payload without JSON carries no fields.
+    }
+    if (frame.event === "token") {
+      if (typeof payload.text === "string") appendText(turn, payload.text);
+      return false;
+    }
+    if (frame.event === "tool") {
+      addPill(turn, typeof payload.name === "string" ? payload.name : "tool", payload.ok !== false);
+      return false;
+    }
+    if (frame.event === "done") {
+      if (typeof payload.threadId === "string" && payload.threadId) storeThreadId(payload.threadId);
+      return true;
+    }
+    if (frame.event === "error") {
+      showTurnError(turn, typeof payload.error === "string" ? payload.error : "The agent reported an error.");
+      return true;
+    }
+    return false;
+  }
+
+  async function readStream(res, turn, signal) {
+    if (!res.body) {
+      showTurnError(turn, "The daemon sent no reply.");
+      return;
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+    for (;;) {
+      const chunk = await reader.read();
+      if (chunk.done) break;
+      buffer = (buffer + decoder.decode(chunk.value, { stream: true })).replace(/\r\n/g, "\n");
+      let end = buffer.indexOf("\n\n");
+      while (end !== -1) {
+        const raw = buffer.slice(0, end);
+        buffer = buffer.slice(end + 2);
+        if (signal.aborted) return;
+        if (applyFrame(parseFrame(raw), turn)) {
+          reader.cancel().catch(() => {});
+          return;
+        }
+        end = buffer.indexOf("\n\n");
+      }
+    }
+    if (!signal.aborted) showTurnError(turn, "The connection closed before the reply finished.");
+  }
+
+  async function send() {
+    const message = el.input.value.trim();
+    if (!message || inflight) return;
+    el.input.value = "";
+    resizeInput();
+
+    const controller = new AbortController();
+    inflight = controller;
+    el.sendBtn.disabled = true;
+    addMessage("user", message);
+    const turn = addMessage("assistant", "");
+    turn.classList.add("pending");
+
+    try {
+      const body = threadId ? { threadId, message } : { message };
+      const res = await api("/api/chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Accept: "text/event-stream" },
+        body: JSON.stringify(body),
+        signal: controller.signal,
+      });
+      if (res.ok) {
+        await readStream(res, turn, controller.signal);
+      } else {
+        showTurnError(turn, await readError(res));
+      }
+    } catch (err) {
+      if (!controller.signal.aborted) showTurnError(turn, errorText(err));
+    } finally {
+      if (inflight === controller) {
+        inflight = null;
+        el.sendBtn.disabled = false;
+      }
+      finishTurn(turn);
+    }
+  }
+
+  function resizeInput() {
+    el.input.style.height = "auto";
+    el.input.style.height = Math.min(el.input.scrollHeight, 200) + "px";
+  }
+
+  function newChat() {
+    if (inflight) {
+      const stopped = inflight;
+      inflight = null;
+      stopped.abort();
+      el.sendBtn.disabled = false;
+    }
+    storeThreadId(null);
+    el.transcript.textContent = "";
+    el.input.focus();
+  }
+
+  el.newChatBtn.addEventListener("click", newChat);
+  el.input.addEventListener("input", resizeInput);
+  el.input.addEventListener("keydown", (event) => {
+    if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      send();
+    }
+  });
+  el.composer.addEventListener("submit", (event) => {
+    event.preventDefault();
+    send();
+  });
+
+  // ---- Settings ----------------------------------------------------------
+
+  function setSettingsMsg(text, isError = false) {
+    el.settingsMsg.textContent = text;
+    el.settingsMsg.className = isError ? "form-msg err" : "form-msg";
+  }
+
+  function setKeyState(input, clearButton, saved) {
+    input.placeholder = saved ? "saved, leave blank to keep" : "not set";
+    clearButton.hidden = !saved;
+  }
+
+  function applyKeyState(cfg) {
+    setKeyState(el.cfgAnthropicKey, el.clearAnthropicKey, cfg.hasAnthropicKey === true);
+    setKeyState(el.cfgOpenaiKey, el.clearOpenaiKey, cfg.hasOpenaiKey === true);
+    setKeyState(el.cfgTypesafeKey, el.clearTypesafeKey, cfg.hasTypesafeKey === true);
+  }
+
+  function fillConfig(cfg) {
+    const providers = Array.from(el.cfgProvider.options, (option) => option.value);
+    el.cfgProvider.value = providers.includes(cfg.provider) ? cfg.provider : "auto";
+    el.cfgAnthropicModel.value = cfg.anthropicModel || "";
+    el.cfgOpenaiModel.value = cfg.openaiModel || "";
+    el.cfgOpenaiBaseUrl.value = cfg.openaiBaseUrl || "";
+    el.cfgJevEnabled.checked = cfg.jevEnabled !== false;
+    el.cfgJevModel.value = cfg.jevModel || "";
+    applyKeyState(cfg);
+  }
+
+  function clearSecretInputs() {
+    el.cfgAnthropicKey.value = "";
+    el.cfgOpenaiKey.value = "";
+    el.cfgTypesafeKey.value = "";
+  }
+
+  async function openSettings() {
+    configLoaded = false;
+    el.settingsSave.disabled = true;
+    setSettingsMsg("Loading settings…");
+    if (!el.dialog.open) el.dialog.showModal();
+    try {
+      const cfg = await withDeadline(8000, (signal) => getJson("/api/config", signal));
+      fillConfig(cfg);
+      configLoaded = true;
+      el.settingsSave.disabled = false;
+      setSettingsMsg("");
+    } catch (err) {
+      setSettingsMsg("Could not load settings: " + errorText(err), true);
+    }
+  }
+
+  function wireClear(button, input, field, label) {
+    button.addEventListener("click", async () => {
+      button.disabled = true;
+      try {
+        const cfg = await putConfig({ ["clear" + field + "Key"]: true });
+        input.value = "";
+        applyKeyState(cfg);
+        setSettingsMsg(label + " key cleared.");
+      } catch (err) {
+        setSettingsMsg("Clear failed: " + errorText(err), true);
+      } finally {
+        button.disabled = false;
+      }
+    });
+  }
+
+  wireClear(el.clearAnthropicKey, el.cfgAnthropicKey, "Anthropic", "Anthropic");
+  wireClear(el.clearOpenaiKey, el.cfgOpenaiKey, "Openai", "OpenAI");
+  wireClear(el.clearTypesafeKey, el.cfgTypesafeKey, "Typesafe", "TypeSafe");
+
+  el.settingsBtn.addEventListener("click", openSettings);
+  el.settingsCancel.addEventListener("click", () => el.dialog.close());
+  el.dialog.addEventListener("close", clearSecretInputs);
+
+  el.settingsForm.addEventListener("submit", async (event) => {
+    event.preventDefault();
+    if (!configLoaded) return;
+    const body = {
+      provider: el.cfgProvider.value,
+      anthropicModel: el.cfgAnthropicModel.value.trim() || DEFAULTS.anthropicModel,
+      openaiModel: el.cfgOpenaiModel.value.trim() || DEFAULTS.openaiModel,
+      openaiBaseUrl: el.cfgOpenaiBaseUrl.value.trim() || DEFAULTS.openaiBaseUrl,
+      jevEnabled: el.cfgJevEnabled.checked,
+      jevModel: el.cfgJevModel.value.trim() || DEFAULTS.jevModel,
+    };
+    const secrets = [
+      ["anthropicApiKey", el.cfgAnthropicKey],
+      ["openaiApiKey", el.cfgOpenaiKey],
+      ["typesafeApiKey", el.cfgTypesafeKey],
+    ];
+    for (const [field, input] of secrets) {
+      const value = input.value.trim();
+      if (value) body[field] = value;
+    }
+    el.settingsSave.disabled = true;
+    setSettingsMsg("Saving…");
+    try {
+      const cfg = await putConfig(body);
+      clearSecretInputs();
+      applyKeyState(cfg);
+      el.dialog.close();
+      pollAll();
+    } catch (err) {
+      setSettingsMsg("Save failed: " + errorText(err), true);
+    } finally {
+      el.settingsSave.disabled = false;
+    }
+  });
+
+  // ---- Start -------------------------------------------------------------
+
+  if (threadId) addNote("Continuing the saved thread. Earlier messages are not shown after a reload.");
+  renderStatus();
+  pollAll();
+  connectSocket();
+  setInterval(pollAll, 2000);
+  setInterval(captureFrame, 1000);
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      pollAll();
+      captureFrame();
+    }
+  });
+})();
+</script>
+</body>
+</html>
